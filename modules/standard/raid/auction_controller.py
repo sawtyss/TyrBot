@@ -19,6 +19,14 @@ class AuctionController:
     def auction_announce_interval(self):
         return TimeSettingType()
 
+    @setting(name="auction_late_bid_extension", value="10s", description="How much to extend auction in case of late bid")
+    def auction_late_bid_extension(self):
+        return TimeSettingType()
+
+    @setting(name="auction_late_bid_threshold", value="10s", description="Threshold for a bid to be considered late")
+    def auction_late_bid_threshold(self):
+        return TimeSettingType()
+
     @command(command="auction", params=[], description="Show auction status",
              access_level="member")
     def auction_cmd(self, request):
@@ -41,8 +49,10 @@ class AuctionController:
 
         auction_length = self.auction_length().get_value()
         announce_interval = self.auction_announce_interval().get_value()
+        late_bid_threshold = self.auction_late_bid_threshold().get_value()
+        late_bid_extension = self.auction_late_bid_extension().get_value()
 
-        return self.auction.start(request.sender, auction_length, announce_interval)
+        return self.auction.start(request.sender, auction_length, announce_interval, late_bid_threshold, late_bid_extension)
 
     @command(command="auction", params=[Options(["cancel", "end"])], description="Cancel ongoing auction",
              access_level="moderator", sub_command="modify")

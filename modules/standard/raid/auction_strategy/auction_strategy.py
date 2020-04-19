@@ -35,8 +35,10 @@ class AuctionStrategy:
         self.auctioneer: SenderObj = None
         self.job_id = None
         self.is_running = False
+        self.late_bid_threshold = None
+        self.late_bid_extension = None
 
-    def start(self, sender: SenderObj, duration, announce_interval):
+    def start(self, sender: SenderObj, duration, announce_interval, late_bid_threshold, late_bid_extension):
         if not self.items:
             return "Could not find any items to start auction."
 
@@ -46,6 +48,8 @@ class AuctionStrategy:
         self.auction_end_time = self.auction_start_time + duration
         self.is_running = True
         self.announce_interval = announce_interval
+        self.late_bid_threshold = late_bid_threshold
+        self.late_bid_extension = late_bid_extension
 
         if len(self.items) > 1:
             self.spam_raid_message("%s just started a mass auction for %d items." % (sender.name, len(self.items)))
@@ -131,8 +135,17 @@ class AuctionStrategy:
         current_amount += 1
         self.winning_bids[item_index] = AuctionBid(sender, account, current_amount, bid_amount)
         self.spam_raid_message("<highlight>%s<end> now holds the leading bid for %s with a bid of <highlight>%d<end>." % (sender.name, item, current_amount))
+        self.extend_time_if_late_bid(item)
         return "Your max bid of <highlight>%d<end> points for %s has put you in the lead. " \
                "You have <highlight>%d<end> points left for bidding." % (bid_amount, item, points_available - bid_amount)
+
+    def extend_time_if_late_bid(self, item):
+        time_left = self.time_left()
+        if time_left < self.late_bid_threshold:
+            self.auction_end_time += self.late_bid_extension
+            self.spam_raid_message("Extending auction time by <highlight>%d<end>s due to late bid for %s with <highlight>%d<end>s remaining." % (self.late_bid_extension, item, time_left))
+            self.cancel_job()
+            self.create_next_announce_job()
 
     def end(self):
         self.cancel_job()
