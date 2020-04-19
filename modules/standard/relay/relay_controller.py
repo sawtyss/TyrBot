@@ -28,10 +28,17 @@ class RelayController:
     def relay_prefix(self):
         return TextSettingType()
 
+    @setting(name="add_relay_prefix", value="yes", description="Enable adding a prefix to messages relayed")
+    def add_relay_prefix(self):
+        return TextSettingType()
+
     @command(command="grc", params=[Any("message")], access_level="all",
              description="Accept incoming messages from relay bot")
     def grc_cmd(self, request, message):
         self.process_incoming_relay_message(request.sender, message)
+
+    def should_add_relay_prefix(self):
+        return self.add_relay_prefix().get_value() == "yes"
 
     def process_incoming_relay_message(self, sender, message):
         relay_bot = self.relay_bot().get_value()
@@ -46,10 +53,12 @@ class RelayController:
     def send_message_to_relay(self, message):
         relay_bot = self.relay_bot().get_value()
         if relay_bot:
-            # if setting, then use setting, else if org, then use org name, else use botname
-            prefix = self.get_org_channel_prefix()
-
-            self.bot.send_private_message(relay_bot, "grc [%s] %s" % (prefix, message), add_color=False)
+            if self.should_add_relay_prefix():
+                # if setting, then use setting, else if org, then use org name, else use botname
+                prefix = self.get_org_channel_prefix()
+                self.bot.send_private_message(relay_bot, "grc [%s] %s" % (prefix, message), add_color=False)
+            else:
+                self.bot.send_private_message(relay_bot, "grc %s" % message, add_color=False)
 
     def get_org_channel_prefix(self):
         return self.relay_prefix().get_value() or self.public_channel_service.get_org_name() or self.bot.char_name
