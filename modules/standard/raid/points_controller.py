@@ -274,7 +274,7 @@ class PointsController:
         if not main:
             return "Could not find character <highlight>%s<end>." % char.name
 
-        points_log = self.db.query("SELECT * FROM points_log WHERE char_id = ? ORDER BY time DESC LIMIT 50",
+        points_log = self.db.query("SELECT * FROM points_log WHERE char_id = ? ORDER BY time DESC LIMIT 5",
                                    [main.char_id])
         points = self.db.query_single("SELECT points, disabled FROM points WHERE char_id = ?", [main.char_id])
         if not points:
@@ -285,6 +285,57 @@ class PointsController:
         blob += "Holder of account: %s [%s]\n" % (main.name, alts_link)
         blob += "Points: %d\n" % points.points
         blob += "Status: %s\n\n" % ("<green>Open<end>" if points.disabled == 0 else "<red>Disabled<end>")
+
+        blob += "<header2>Account log (last 5 entries)<end>\n"
+        if points_log is None:
+            blob += "No entries in log."
+        else:
+            for entry in points_log:
+                name_reference = "<highlight>%s<end>" % char.name
+
+                if entry.audit == 0:
+                    # If points is 0, then it's a general case log
+                    blob += "<grey>[%s]<end> <orange>\"%s\"<end>" % (
+                        self.util.format_datetime(entry.time), entry.reason)
+                elif entry.audit > 0:
+                    pts = "<green>%d<end>" % entry.audit
+                    blob += "<grey>[%s]<end> %s points were added to %s account " \
+                            "by <highlight>%s<end> with reason <orange>%s<end>" \
+                            % (self.util.format_datetime(entry.time),
+                               pts, name_reference,
+                               self.character_service.resolve_char_to_name(entry.leader_id), entry.reason)
+                elif entry.audit < 0:
+                    pts = "<red>%d<end>" % (-1 * entry.audit)
+                    blob += "<grey>[%s]<end> %s points were taken from %s account " \
+                            "by <highlight>%s<end> with reason <orange>%s<end>" \
+                            % (self.util.format_datetime(entry.time),
+                               pts, name_reference,
+                               self.character_service.resolve_char_to_name(entry.leader_id),
+                               entry.reason)
+
+                log_entry_link = self.text.make_chatcmd("%d" % entry.log_id,
+                                                        "/tell <myname> account logentry %d" % entry.log_id)
+                blob += " [%s]\n" % log_entry_link
+        blob+="\n"
+        blob+="To view full account log " + self.text.make_chatcmd("click here", "/tell <myname> account log") + "."
+
+        return ChatBlob("%s Account" % char.name, blob)
+
+    def get_account_log(self, char: SenderObj):
+        main = self.alts_service.get_main(char.char_id)
+        if not main:
+            return "Could not find character <highlight>%s<end>." % char.name
+
+        points_log = self.db.query("SELECT * FROM points_log WHERE char_id = ? ORDER BY time DESC LIMIT 100",
+                                   [main.char_id])
+        points = self.db.query_single("SELECT points, disabled FROM points WHERE char_id = ?", [main.char_id])
+        if not points:
+            return "Could not find raid account for <highlight>%s<end>." % char.name
+
+        alts_link = self.text.make_chatcmd("Alts", "/tell <myname> alts %s" % main.name)
+        blob = ""
+        blob += "Account log for: %s [%s]\n" % (main.name, alts_link)
+        blob += "Points: %d\n" % points.points
 
         blob += "<header2>Account log<end>\n"
         if points_log is None:
@@ -317,4 +368,9 @@ class PointsController:
                                                         "/tell <myname> account logentry %d" % entry.log_id)
                 blob += " [%s]\n" % log_entry_link
 
-        return ChatBlob("%s Account" % char.name, blob)
+        return ChatBlob("%s Account log" % char.name, blob)
+
+    @command(command="account", params=[Const("log")], access_level="all",
+             description="Look up your account log")
+    def account_self_log_cmd(self, request, params):
+        return self.get_account_log(request.sender)
