@@ -187,11 +187,28 @@ class AuctionStrategy:
 
             winning_bid = self.winning_bids.get(i, None)
             if winning_bid:
-                blob += " | <highlight>%s<end> has the winning bid of <highlight>%d<end>\n\n" % (winning_bid.sender.name, winning_bid.current_amount)
+                blob += " | <highlight>%s<end> has the winning bid of <highlight>%d<end>\n" % (winning_bid.sender.name, winning_bid.current_amount)
             else:
-                blob += " | <green>No bidders<end>\n\n"
+                blob += " | <green>No bidders<end>\n"
+            blob += self.get_bid_links(i)
+            blob += "\n\n"
+        blob+= "To bid a custom amount use:\n"
+        blob+= "<highlight>/tell <myname> auction bid <custom amount> <item number><end>"
 
         return ChatBlob("Auction list (%d)" % len(self.items), blob)
+
+    def get_bid_links(self, i):
+        return " | %s %s %s %s %s %s %s %s" % (self.get_bid_template(i, 1),
+                                               self.get_bid_template(i, 2),
+                                               self.get_bid_template(i, 3),
+                                               self.get_bid_template(i, 5),
+                                               self.get_bid_template(i, 10),
+                                               self.get_bid_template(i, 20),
+                                               self.get_bid_template(i, 50),
+                                               self.get_bid_template(i, 100))
+
+    def get_bid_template(self, item_nr, bid_amount):
+        return "<a href='chatcmd:///tell <myname> auction bid %d %d'>Bid %d</a>" % (bid_amount, item_nr, bid_amount)
 
     def get_points_used(self, main_id, item_index):
         points_used = 0
