@@ -1,4 +1,3 @@
-
 from core.command_param_types import Any, Const, Int
 from core.decorators import instance, command
 from core.chat_blob import ChatBlob
@@ -49,8 +48,8 @@ class RulesController:
         else:
             return "Failed to set rules introduction."
 
-    @command(command="rules",params=[Const("intro"),Any("intro")], access_level="admin", description="Update the preamble section of rules", sub_command="update")
-    def rules_delete_intro_cmd(self, request, _, intro):
+    @command(command="rules",params=[Const("intro"),Const("delete")], access_level="admin", description="Deletes the preamble section of rules", sub_command="update")
+    def rules_delete_intro_cmd(self, request, _, _2):
         success = self.delete_rule_from_db(-1)
         if success > 0:
             return "Rules introduction deleted successfully."
