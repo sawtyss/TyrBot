@@ -23,6 +23,22 @@ class RulesController:
             rules_blob = self.format_rules_entries(rules_intro, rules_rows)
         return ChatBlob("Rules", rules_blob)
 
+    @command(command="rules",params=[Const("intro"), Const("set"), Any("intro")], access_level="admin", description="Set the preamble section of rules", sub_command="update")
+    def rules_intro_cmd(self, request, _, __, intro):
+        success = self.update_rule_in_db(-1, intro)
+        if success > 0:
+            return "Rules introduction set successfully."
+        else:
+            return "Failed to set rules introduction."
+
+    @command(command="rules",params=[Const("intro"),Const("delete")], access_level="admin", description="Delete the preamble section of rules", sub_command="update")
+    def rules_delete_intro_cmd(self, request, _, __):
+        success = self.delete_rule_from_db(-1)
+        if success > 0:
+            return "Rules introduction deleted successfully."
+        else:
+            return "Failed to delete rules introduction."
+
     @command(command="rules",params=[Const("set"),Int("rule_id"), Any("rule")], access_level="admin", description="Create/update a rule", sub_command="update")
     def rules_set_cmd(self, request, _, rule_id, rule):
         success = self.update_rule_in_db(rule_id, rule)
@@ -39,22 +55,6 @@ class RulesController:
             return "Rule number <highlight>%d<end> deleted successfully." % rule_id
         else:
             return "Failed to delete rule number <highlight>%d<end>." % rule_id
-
-    @command(command="rules",params=[Const("intro"),Any("intro")], access_level="admin", description="Update the preamble section of rules", sub_command="update")
-    def rules_intro_cmd(self, request, _, intro):
-        success = self.update_rule_in_db(-1, intro)
-        if success > 0:
-            return "Rules introduction set successfully."
-        else:
-            return "Failed to set rules introduction."
-
-    @command(command="rules",params=[Const("intro"),Const("delete")], access_level="admin", description="Deletes the preamble section of rules", sub_command="update")
-    def rules_delete_intro_cmd(self, request, _, _2):
-        success = self.delete_rule_from_db(-1)
-        if success > 0:
-            return "Rules introduction deleted successfully."
-        else:
-            return "Failed to delete rules introduction."
 
     def delete_rule_from_db(self, rule_id):
         sql = "DELETE FROM rules where id = ?"
