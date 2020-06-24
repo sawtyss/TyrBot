@@ -1,4 +1,5 @@
-from core.command_param_types import Any, Const
+
+from core.command_param_types import Any, Const, Int
 from core.decorators import instance, command
 from core.chat_blob import ChatBlob
 
@@ -17,25 +18,69 @@ class RulesController:
     @command(command="rules",params=[], access_level="member", description="Show rules")
     def rules_cmd(self, request):
         rules_rows = self.get_rules()
+        rules_intro = self.get_rules_intro()
+        rules_blob = "No rules!\n\n<highlight>LONG LIVE ANARCHY!<end>"
         if rules_rows:
-            return ChatBlob("Rules", self.format_rules_entries(self.get_news()))
-        else:
-            return ChatBlob("Rules", "No rules!\n\n LONG LIVE ANARCHY!")
+            rules_blob = self.format_rules_entries(rules_intro, rules_rows)
+        return ChatBlob("Rules", rules_blob)
 
-    @command(command="rules_admin",params=[Const("add"),Any("rule")], access_level="admin", description="Add a new rule")
-    def rules_admin_add_cmd(self, request, _, rule):
-        sql = "INSERT INTO rules (rule) VALUES (?)"
-        success = self.db.exec(sql, [rule])
+    @command(command="rules",params=[Const("set"),Int("rule_id"), Any("rule")], access_level="admin", description="Create/update a rule", sub_command="update")
+    def rules_set_cmd(self, request, _, rule_id, rule):
+        success = self.update_rule_in_db(rule_id, rule)
         if success > 0:
-            return "New rule with number <highlight>%d<end> added successfully." % self.db.last_insert_id()
+            return "Rule number <highlight>%d<end> updated successfully." % rule_id
         else:
-            return "Failed to add news entry."
+            return "Failed to update rule number <highlight>%d<end>." % rule_id
 
-    def format_rules_entries(self, entries):
+    @command(command="rules",params=[Const("delete"),Int("rule_id")], access_level="admin", description="Delete an existing rule", sub_command="update")
+    def rules_delete_cmd(self, request, _, rule_id):
+        sql = "DELETE FROM rules where id = ?"
+        success = self.db.exec(sql, [rule_id])
+        if success > 0:
+            return "Rule number <highlight>%d<end> deleted successfully." % rule_id
+        else:
+            return "Failed to delete rule number <highlight>%d<end>." % rule_id
+
+    @command(command="rules",params=[Const("intro"),Any("intro")], access_level="admin", description="Update the preamble section of rules", sub_command="update")
+    def rules_intro_cmd(self, request, _, intro):
+        success = self.update_rule_in_db(-1, intro)
+        if success > 0:
+            return "Rules introduction set successfully."
+        else:
+            return "Failed to set rules introduction."
+
+    @command(command="rules",params=[Const("intro"),Any("intro")], access_level="admin", description="Update the preamble section of rules", sub_command="update")
+    def rules_delete_intro_cmd(self, request, _, intro):
+        success = self.delete_rule_from_db(-1)
+        if success > 0:
+            return "Rules introduction deleted successfully."
+        else:
+            return "Failed to delete rules introduction."
+
+    def delete_rule_from_db(self, rule_id):
+        sql = "DELETE FROM rules where id = ?"
+        return self.db.exec(sql, [rule_id])
+
+    def update_rule_in_db(self, rule_id, rule):
+        sql = "UPDATE rules set rule = ? where id = ?"
+        success = self.db.exec(sql, [rule, rule_id])
+        if not success > 0:
+            sql = "INSERT INTO rules (id, rule) VALUES (?,?)"
+            success = self.db.exec(sql, [rule_id, rule])
+        return success
+
+    def format_rules_entries(self, introduction, entries):
         blob = ""
+        nr = 1
+        if introduction:
+            blob += "<highlight>%s<end>\n\n" % introduction
         for item in entries:
-            blob += "<highlight>%s)<end> %s\n" % (item.id, item.rule)
+            blob += "<highlight>%s)<end> <font color='yellow'>%s</font>\n" % (item.id, item.rule)
+            nr += 1
         return blob
 
     def get_rules(self):
-        return self.db.query_single("SELECT * FROM rules ORDER BY id ASC")
+        return self.db.query("SELECT * FROM rules WHERE id > 0 ORDER BY id ASC")
+
+    def get_rules_intro(self):
+        return self.db.query_single("SELECT rule FROM rules WHERE id = -1").rule
