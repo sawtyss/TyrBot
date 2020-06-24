@@ -82,4 +82,8 @@ class RulesController:
         return self.db.query("SELECT * FROM rules WHERE id > 0 ORDER BY id ASC")
 
     def get_rules_intro(self):
-        return self.db.query_single("SELECT rule FROM rules WHERE id = -1").rule
+        intro = self.db.query_single("SELECT rule FROM rules WHERE id = -1")
+        if intro:
+            return intro.rule
+        else:
+            return None
